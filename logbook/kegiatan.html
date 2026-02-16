@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Butir Kegiatan - Logbook</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+    <div class="flex flex-col md:flex-row">
+        <aside class="w-full md:w-64 bg-slate-800 text-white min-h-screen p-4 flex flex-col">
+            <h1 class="text-2xl font-bold mb-8 text-center text-primary tracking-tighter">LOGBOOK APP</h1>
+            <nav class="space-y-2 flex-1">
+                <a href="harian.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📅</span> Input Harian
+                </a>
+
+                <a href="rekap.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📊</span> Rekapitulasi
+                </a>
+
+                <a href="kegiatan.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📝</span> Input Butir Kegiatan
+                </a>
+
+                <a href="profil.html"
+                    class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all border-t border-slate-700 pt-5">
+                    <span>👤</span> Profil Pegawai
+                </a>
+            </nav>
+
+            <div class="mt-auto pt-10">
+                <button onclick="logout()"
+                    class="flex items-center gap-3 w-full text-left p-3 hover:bg-red-600 rounded transition-all text-red-200 hover:text-white">
+                    <span>🚪</span> Keluar
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-8">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-slate-800">Master Butir Kegiatan</h2>
+
+                <div class="card bg-white shadow-md mb-8">
+                    <div class="card-body">
+                        <h3 class="card-title text-slate-600 mb-4">Tambah / Edit Kegiatan</h3>
+                        <form id="kegiatanForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="hidden" id="editId">
+
+                            <div class="form-control md:col-span-2">
+                                <label class="label font-medium">Nama Butir Kegiatan</label>
+                                <input type="text" id="nama_kegiatan" class="input input-bordered"
+                                    placeholder="Contoh: Melakukan pengkajian awal keperawatan" required>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium">Target Tahunan</label>
+                                <input type="number" id="target_tahunan" class="input input-bordered" placeholder="0">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium">Output / Hasil Kerja</label>
+                                <select id="hasil_kerja" class="select select-bordered w-full">
+                                    <option value="Kegiatan">Kegiatan</option>
+                                    <option value="Laporan">Laporan</option>
+                                    <option value="Dokumen">Dokumen</option>
+                                    <option value="Logbook">Logbook</option>
+                                </select>
+                            </div>
+
+                            <div class="form-control md:col-span-2">
+                                <label class="label font-medium">Link Bukti Dukung (GDrive/Folder)</label>
+                                <input type="url" id="link_bukti_dukung" class="input input-bordered"
+                                    placeholder="https://drive.google.com/...">
+                            </div>
+
+                            <div class="md:col-span-2 flex gap-2 mt-4">
+                                <button type="submit" id="btnSave" class="btn btn-primary flex-1">Simpan
+                                    Kegiatan</button>
+                                <button type="button" onclick="resetForm()" class="btn btn-ghost">Batal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card bg-white shadow-md overflow-hidden">
+                    <div class="p-4 bg-slate-100 border-b font-bold text-slate-700">Daftar Butir Kegiatan Anda</div>
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra w-full">
+                            <thead>
+                                <tr class="bg-slate-200">
+                                    <th>No</th>
+                                    <th>Kegiatan</th>
+                                    <th>Target</th>
+                                    <th>Output</th>
+                                    <th>Bukti</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kegiatanTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sbkruppczfctudqigfgo.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mJLQAiQAmkouMEMWKxk75g_F1p6Z78m';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const form = document.getElementById('kegiatanForm');
+        let currentUserId = null;
+
+        // 1. Inisialisasi & Cek User
+        async function init() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            currentUserId = user.id;
+            fetchKegiatan();
+        }
+
+        // 2. Ambil Data dari Supabase
+        async function fetchKegiatan() {
+            const { data, error } = await _supabase
+                .from('kamus_kegiatan')
+                .select('*')
+                .eq('user_id', currentUserId)
+                .order('created_at', { ascending: false });
+
+            if (error) console.error(error);
+
+            const tableBody = document.getElementById('kegiatanTable');
+            tableBody.innerHTML = '';
+
+            data.forEach((item, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td class="font-medium">${item.nama_kegiatan}</td>
+                        <td>${item.target_tahunan}</td>
+                        <td><span class="badge badge-ghost">${item.hasil_kerja}</span></td>
+                        <td>
+                            ${item.link_bukti_dukung ? `<a href="${item.link_bukti_dukung}" target="_blank" class="text-blue-500 underline text-xs">Buka Link</a>` : '-'}
+                        </td>
+                        <td class="flex justify-center gap-2">
+                            <button onclick="editKegiatan('${item.id}', '${item.nama_kegiatan}', ${item.target_tahunan}, '${item.hasil_kerja}', '${item.link_bukti_dukung || ''}')" class="btn btn-xs btn-warning text-white">Edit</button>
+                            <button onclick="deleteKegiatan('${item.id}')" class="btn btn-xs btn-error text-white">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 3. Simpan / Update Data
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+
+            const payload = {
+                user_id: currentUserId,
+                nama_kegiatan: document.getElementById('nama_kegiatan').value,
+                target_tahunan: parseInt(document.getElementById('target_tahunan').value) || 0,
+                hasil_kerja: document.getElementById('hasil_kerja').value,
+                link_bukti_dukung: document.getElementById('link_bukti_dukung').value
+            };
+
+            let error;
+            if (id) {
+                // Update
+                const { error: err } = await _supabase.from('kamus_kegiatan').update(payload).eq('id', id);
+                error = err;
+            } else {
+                // Insert
+                const { error: err } = await _supabase.from('kamus_kegiatan').insert([payload]);
+                error = err;
+            }
+
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                resetForm();
+                fetchKegiatan();
+            }
+            btn.disabled = false;
+        });
+
+        // 4. Hapus Data
+        async function deleteKegiatan(id) {
+            if (confirm('Hapus butir kegiatan ini?')) {
+                const { error } = await _supabase.from('kamus_kegiatan').delete().eq('id', id);
+                if (error) alert(error.message);
+                else fetchKegiatan();
+            }
+        }
+
+        // 5. Helper Fungsi
+        function editKegiatan(id, nama, target, hasil, link) {
+            document.getElementById('editId').value = id;
+            document.getElementById('nama_kegiatan').value = nama;
+            document.getElementById('target_tahunan').value = target;
+            document.getElementById('hasil_kerja').value = hasil;
+            document.getElementById('link_bukti_dukung').value = link;
+            document.getElementById('btnSave').innerText = 'Update Kegiatan';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('btnSave').innerText = 'Simpan Kegiatan';
+        }
+
+        async function logout() {
+            await _supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Logbook - Mode Atasan</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+
+    <header class="bg-primary text-white p-6 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold uppercase tracking-tight">Laporan Rekapitulasi Logbook</h1>
+                <p class="text-xs opacity-80">Akses Publik: Mode Tampilan Atasan</p>
+            </div>
+            <div class="hidden md:block">
+                <span class="badge badge-outline text-white">View Only</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="card bg-white p-5 shadow-sm border-l-4 border-primary">
+                <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Pegawai yang Dinilai</h3>
+                <div class="text-sm space-y-1">
+                    <p class="flex justify-between"><span class="font-medium">Nama:</span> <span id="p_nama">-</span>
+                    </p>
+                    <p class="flex justify-between"><span class="font-medium">NIP:</span> <span id="p_nip">-</span></p>
+                    <p class="flex justify-between"><span class="font-medium">Jabatan:</span> <span
+                            id="p_jabatan">-</span></p>
+                    <p class="flex justify-between"><span class="font-medium">Unit Kerja:</span> <span
+                            id="p_unit">-</span></p>
+                </div>
+            </div>
+            <div class="card bg-white p-5 shadow-sm border-l-4 border-orange-400">
+                <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Atasan Penilai</h3>
+                <div class="text-sm space-y-1">
+                    <p class="flex justify-between"><span class="font-medium">Nama:</span> <span id="a_nama">-</span>
+                    </p>
+                    <p class="flex justify-between"><span class="font-medium">NIP:</span> <span id="a_nip">-</span></p>
+                    <p class="flex justify-between"><span class="font-medium">Jabatan:</span> <span
+                            id="a_jabatan">-</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white p-6 shadow-sm mb-6">
+            <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <span>⚙️</span> Opsi Tampilan Rekap
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div class="form-control">
+                    <label class="label text-xs font-bold uppercase">Mode Rekap</label>
+                    <select id="mode" class="select select-bordered select-sm" onchange="toggleFilter()">
+                        <option value="bulan">Bulanan</option>
+                        <option value="triwulan">Triwulan</option>
+                        <option value="tahun">Tahunan</option>
+                    </select>
+                </div>
+
+                <div id="boxBulan" class="form-control">
+                    <label class="label text-xs font-bold uppercase">Pilih Bulan</label>
+                    <select id="vBulan" class="select select-bordered select-sm">
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+
+                <div id="boxTriwulan" class="form-control hidden">
+                    <label class="label text-xs font-bold uppercase">Pilih Triwulan</label>
+                    <select id="vTriwulan" class="select select-bordered select-sm">
+                        <option value="1">Triwulan 1 (Jan-Mar)</option>
+                        <option value="2">Triwulan 2 (Apr-Jun)</option>
+                        <option value="3">Triwulan 3 (Jul-Sep)</option>
+                        <option value="4">Triwulan 4 (Okt-Des)</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label text-xs font-bold uppercase">Tahun</label>
+                    <input type="number" id="vTahun" class="input input-bordered input-sm" value="2026">
+                </div>
+
+                <button onclick="loadDataAtasan()" class="btn btn-primary btn-sm">Tampilkan Rekap</button>
+            </div>
+        </div>
+
+        <div class="card bg-white shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-xs">
+                    <thead>
+                        <tr class="bg-slate-200 text-slate-700">
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>Kegiatan</th>
+                            <th>No. RM</th>
+                            <th class="text-center">Hasil/Output</th>
+                            <th class="text-center">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="viewBody">
+                        <tr>
+                            <td colspan="6" class="text-center p-10 text-slate-400">Silakan klik Tampilkan Rekap untuk
+                                memuat data.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const SUPABASE_URL = 'https://sbkruppczfctudqigfgo.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mJLQAiQAmkouMEMWKxk75g_F1p6Z78m';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let targetUserId = null;
+
+        // Ambil ID dari URL (?id=UUID)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlId = urlParams.get('id');
+
+        async function initView() {
+            if (!urlId) {
+                document.body.innerHTML = "<div class='p-20 text-center font-bold text-red-500'>ID Laporan tidak ditemukan dalam URL.</div>";
+                return;
+            }
+
+            // Cari profil berdasarkan ID murni
+            const { data: profile, error } = await _supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', urlId)
+                .eq('is_public_view', true)
+                .single();
+
+            if (error || !profile) {
+                document.body.innerHTML = "<div class='p-20 text-center'><h2 class='text-xl font-bold'>Akses Dibatasi</h2><p class='text-slate-500'>Laporan tidak ditemukan atau pemilik telah menutup akses publik.</p></div>";
+                return;
+            }
+
+            targetUserId = profile.id;
+
+            // Isi profil
+            document.getElementById('p_nama').innerText = profile.nama_lengkap || "-";
+            document.getElementById('p_nip').innerText = profile.nip || "-";
+            document.getElementById('p_jabatan').innerText = profile.jabatan || "-";
+            document.getElementById('p_unit').innerText = profile.unit_kerja || "-";
+
+            document.getElementById('a_nama').innerText = profile.atasan_nama || "-";
+            document.getElementById('a_nip').innerText = profile.atasan_nip || "-";
+            document.getElementById('a_jabatan').innerText = profile.atasan_jabatan || "-";
+
+            // Load data default awal
+            loadDataAtasan();
+        }
+
+        function toggleFilter() {
+            const m = document.getElementById('mode').value;
+            document.getElementById('boxBulan').classList.toggle('hidden', m !== 'bulan');
+            document.getElementById('boxTriwulan').classList.toggle('hidden', m !== 'triwulan');
+        }
+
+        async function loadDataAtasan() {
+            const mode = document.getElementById('mode').value;
+            const tahun = document.getElementById('vTahun').value;
+            const tbody = document.getElementById('viewBody');
+
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-10"><span class="loading loading-spinner"></span> Memuat data...</td></tr>';
+
+            let query = _supabase.from('view_logbook_rekap').select('*').eq('user_id', targetUserId).eq('tahun', tahun);
+
+            if (mode === 'bulan') query = query.eq('bulan', document.getElementById('vBulan').value);
+            if (mode === 'triwulan') query = query.eq('triwulan', document.getElementById('vTriwulan').value);
+
+            const { data, error } = await query.order('tanggal', { ascending: true });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 p-10">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-10">Tidak ada data untuk periode ini.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = "";
+            data.forEach((d, i) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${d.tanggal}</td>
+                        <td class="font-medium">${d.nama_kegiatan}</td>
+                        <td>${d.no_rm || "-"}</td>
+                        <td class="text-center"><span class="badge badge-ghost">${d.hasil_kerja || 'Kegiatan'}</span></td>
+                        <td class="text-center font-bold">${d.qty}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        initView();
+    </script>
+</body>
+
+</html>

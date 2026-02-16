@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Harian - Logbook</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+    <div class="flex flex-col md:flex-row">
+        <aside class="w-full md:w-64 bg-slate-800 text-white min-h-screen p-4 flex flex-col">
+            <h1 class="text-2xl font-bold mb-8 text-center text-primary tracking-tighter">LOGBOOK APP</h1>
+            <nav class="space-y-2 flex-1">
+                <a href="harian.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📅</span> Input Harian
+                </a>
+
+                <a href="rekap.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📊</span> Rekapitulasi
+                </a>
+
+                <a href="kegiatan.html" class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all">
+                    <span>📝</span> Input Butir Kegiatan
+                </a>
+
+                <a href="profil.html"
+                    class="flex items-center gap-3 p-3 hover:bg-slate-700 rounded transition-all border-t border-slate-700 pt-5">
+                    <span>👤</span> Profil Pegawai
+                </a>
+            </nav>
+
+            <div class="mt-auto pt-10">
+                <button onclick="logout()"
+                    class="flex items-center gap-3 w-full text-left p-3 hover:bg-red-600 rounded transition-all text-red-200 hover:text-white">
+                    <span>🚪</span> Keluar
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-8">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-slate-800">Logbook Harian</h2>
+
+                <div class="card bg-white shadow-md mb-8">
+                    <div class="card-body">
+                        <h3 class="card-title text-slate-600 mb-4 text-sm uppercase tracking-widest">Tambah Logbook</h3>
+                        <form id="logbookForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <input type="hidden" id="editId">
+
+                            <div class="form-control md:col-span-2">
+                                <label class="label font-medium text-xs">Pilih Butir Kegiatan</label>
+                                <select id="kegiatan_id" class="select select-bordered w-full" required>
+                                    <option value="">-- Pilih Kegiatan --</option>
+                                </select>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium text-xs">Tanggal</label>
+                                <input type="date" id="tanggal" class="input input-bordered" required>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium text-xs">No. RM</label>
+                                <input type="text" id="no_rm" class="input input-bordered"
+                                    placeholder="Nomor Rekam Medis">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium text-xs">Jam Mulai</label>
+                                <input type="time" id="jam_mulai" class="input input-bordered">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium text-xs">Jam Selesai</label>
+                                <input type="time" id="jam_selesai" class="input input-bordered">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label font-medium text-xs">Jumlah (Qty)</label>
+                                <input type="number" id="qty" class="input input-bordered" value="1" min="1">
+                            </div>
+
+                            <div class="form-control flex items-end justify-end pb-1">
+                                <button type="submit" id="btnSave" class="btn btn-primary w-full">Simpan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-4 mb-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <input type="text" id="searchBox" onkeyup="filterData()"
+                            placeholder="Cari No RM atau Kegiatan..."
+                            class="input input-bordered input-sm w-full max-w-xs">
+                        <input type="date" id="filterTanggal" onchange="filterData()"
+                            class="input input-bordered input-sm">
+                        <button onclick="resetFilter()" class="btn btn-sm btn-ghost">Reset</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-outline btn-success">Excel</button>
+                        <button class="btn btn-sm btn-outline btn-error">PDF</button>
+                    </div>
+                </div>
+
+                <div class="card bg-white shadow-md overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra w-full text-xs">
+                            <thead>
+                                <tr class="bg-slate-200">
+                                    <th>No</th>
+                                    <th>Tanggal</th>
+                                    <th>Waktu</th>
+                                    <th>Butir Kegiatan</th>
+                                    <th>No. RM</th>
+                                    <th>Jumlah</th>
+                                    <th>Bukti Link</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logbookTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sbkruppczfctudqigfgo.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mJLQAiQAmkouMEMWKxk75g_F1p6Z78m';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentUserId = null;
+        let masterData = []; // Untuk menyimpan data agar bisa difilter di sisi client
+
+        async function init() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { window.location.href = 'login.html'; return; }
+            currentUserId = user.id;
+
+            // Set default tanggal hari ini
+            document.getElementById('tanggal').valueAsDate = new Date();
+
+            await loadKamus();
+            await fetchLogs();
+        }
+
+        // Ambil Daftar Kegiatan untuk Dropdown
+        async function loadKamus() {
+            const { data } = await _supabase.from('kamus_kegiatan').select('id, nama_kegiatan').eq('user_id', currentUserId);
+            const select = document.getElementById('kegiatan_id');
+            data.forEach(item => {
+                select.innerHTML += `<option value="${item.id}">${item.nama_kegiatan}</option>`;
+            });
+        }
+
+        // Ambil Data Logbook dari VIEW yang sudah Anda buat di SQL
+        async function fetchLogs() {
+            const { data, error } = await _supabase
+                .from('view_logbook_rekap') // Menggunakan VIEW agar data nama_kegiatan & link_bukti_dukung ikut terbawa
+                .select('*')
+                .eq('user_id', currentUserId)
+                .order('tanggal', { ascending: false });
+
+            if (error) console.error(error);
+            masterData = data;
+            renderTable(data);
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('logbookTable');
+            tableBody.innerHTML = '';
+            data.forEach((item, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td class="whitespace-nowrap">${item.tanggal}</td>
+                        <td>${item.jam_mulai?.slice(0, 5) || '-'} s/d ${item.jam_selesai?.slice(0, 5) || '-'}</td>
+                        <td class="font-medium">${item.nama_kegiatan}</td>
+                        <td>${item.no_rm || '-'}</td>
+                        <td class="text-center font-bold">${item.qty}</td>
+                        <td>
+                            ${item.link_bukti_dukung ? `<a href="${item.link_bukti_dukung}" target="_blank" class="btn btn-xs btn-ghost text-blue-500 underline">Lihat</a>` : '-'}
+                        </td>
+                        <td class="flex justify-center gap-2">
+                            <button onclick="editLog('${item.id}')" class="btn btn-xs btn-warning">Edit</button>
+                            <button onclick="deleteLog('${item.id}')" class="btn btn-xs btn-error">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Fitur Cari & Filter
+        function filterData() {
+            const search = document.getElementById('searchBox').value.toLowerCase();
+            const date = document.getElementById('filterTanggal').value;
+
+            const filtered = masterData.filter(item => {
+                const matchSearch = item.nama_kegiatan.toLowerCase().includes(search) || item.no_rm?.toLowerCase().includes(search);
+                const matchDate = date ? item.tanggal === date : true;
+                return matchSearch && matchDate;
+            });
+            renderTable(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('searchBox').value = '';
+            document.getElementById('filterTanggal').value = '';
+            renderTable(masterData);
+        }
+
+        // Simpan Data Logbook
+        document.getElementById('logbookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const btn = document.getElementById('btnSave');
+            btn.disabled = true;
+
+            const payload = {
+                user_id: currentUserId,
+                kegiatan_id: document.getElementById('kegiatan_id').value,
+                tanggal: document.getElementById('tanggal').value,
+                no_rm: document.getElementById('no_rm').value,
+                jam_mulai: document.getElementById('jam_mulai').value || null,
+                jam_selesai: document.getElementById('jam_selesai').value || null,
+                qty: parseInt(document.getElementById('qty').value) || 1
+            };
+
+            let error;
+            if (id) {
+                const { error: err } = await _supabase.from('logbook_harian').update(payload).eq('id', id);
+                error = err;
+            } else {
+                const { error: err } = await _supabase.from('logbook_harian').insert([payload]);
+                error = err;
+            }
+
+            if (error) alert(error.message);
+            else {
+                document.getElementById('logbookForm').reset();
+                document.getElementById('editId').value = '';
+                btn.innerText = 'Simpan';
+                await fetchLogs();
+            }
+            btn.disabled = false;
+        });
+
+        // Hapus & Edit
+        async function deleteLog(id) {
+            if (confirm('Hapus data ini?')) {
+                await _supabase.from('logbook_harian').delete().eq('id', id);
+                fetchLogs();
+            }
+        }
+
+        async function editLog(id) {
+            const item = masterData.find(d => d.id === id);
+            if (item) {
+                document.getElementById('editId').value = item.id;
+                document.getElementById('kegiatan_id').value = item.kegiatan_id;
+                document.getElementById('tanggal').value = item.tanggal;
+                document.getElementById('no_rm').value = item.no_rm;
+                document.getElementById('jam_mulai').value = item.jam_mulai;
+                document.getElementById('jam_selesai').value = item.jam_selesai;
+                document.getElementById('qty').value = item.qty;
+                document.getElementById('btnSave').innerText = 'Update';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        async function logout() { await _supabase.auth.signOut(); window.location.href = 'login.html'; }
+
+        init();
+    </script>
+</body>
+
+</html>
